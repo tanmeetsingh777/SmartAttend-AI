@@ -30,13 +30,11 @@ const loadAccessibleClass = async (req, res, next) => {
     ...getAccessibleClassQuery(req.user),
   });
   if (!classObj) {
-    return res
-      .status(403)
-      .json({
-        success: false,
-        message: "You are not authorized for this class",
-        code: "CLASS_ACCESS_DENIED",
-      });
+    return res.status(403).json({
+      success: false,
+      message: "You are not authorized for this class",
+      code: "CLASS_ACCESS_DENIED",
+    });
   }
   req.accessibleClass = classObj;
   next();

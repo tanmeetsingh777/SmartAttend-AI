@@ -14,7 +14,10 @@ const correctionRoutes = require("./routes/correctionRoutes");
 const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
-  ...(process.env.FRONTEND_URL || "").split(",").map(origin => origin.trim()).filter(Boolean),
+  ...(process.env.FRONTEND_URL || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
 ];
 
 const app = express();

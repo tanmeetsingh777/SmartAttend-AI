@@ -1,13 +1,13 @@
-import api from './api';
+import api from "./api";
 
 export const classService = {
   async getAssignableTeachers() {
-    const res = await api.get('/classes/teachers');
+    const res = await api.get("/classes/teachers");
     return res.data;
   },
 
   async getClasses() {
-    const res = await api.get('/classes');
+    const res = await api.get("/classes");
     return res.data;
   },
 
@@ -17,7 +17,7 @@ export const classService = {
   },
 
   async createClass(data) {
-    const res = await api.post('/classes', data);
+    const res = await api.post("/classes", data);
     return res.data;
   },
 
@@ -29,5 +29,5 @@ export const classService = {
   async deleteClass(id) {
     const res = await api.delete(`/classes/${id}`);
     return res.data;
-  }
+  },
 };
