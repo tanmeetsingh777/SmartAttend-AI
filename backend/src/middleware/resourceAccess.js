@@ -5,12 +5,17 @@ const getAccessibleClassQuery = (user) => {
   if (user.role === "admin") return {};
   if (user.role === "hod")
     return { departmentId: { $in: user.departmentIds || [] } };
-  return {
-    $or: [
-      { teacherIds: user._id },
-      { "facultyAssignments.teacherId": user._id },
-    ],
-  };
+
+  const teacherAccess = [
+    { teacherIds: user._id },
+    { "facultyAssignments.teacherId": user._id },
+  ];
+
+  if (user.departmentIds && user.departmentIds.length > 0) {
+    teacherAccess.push({ departmentId: { $in: user.departmentIds } });
+  }
+
+  return { $or: teacherAccess };
 };
 
 const loadAccessibleClass = async (req, res, next) => {
