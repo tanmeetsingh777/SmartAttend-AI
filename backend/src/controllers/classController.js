@@ -133,6 +133,8 @@ exports.createClass = async (req, res, next) => {
       teacherIds,
       facultyAssignments,
     } = req.body;
+    const effectiveDepartmentId =
+      departmentId || (req.user.role === "hod" ? req.user.departmentIds?.[0] : undefined);
 
     // Default teacherIds to current user if teacher role
     let assignedTeachers = teacherIds || [];
@@ -144,9 +146,9 @@ exports.createClass = async (req, res, next) => {
     }
     if (
       req.user.role === "hod" &&
-      (!departmentId ||
+      (!effectiveDepartmentId ||
         !(req.user.departmentIds || []).some(
-          (id) => String(id) === String(departmentId),
+          (id) => String(id) === String(effectiveDepartmentId),
         ))
     ) {
       return res.status(403).json({
@@ -164,7 +166,7 @@ exports.createClass = async (req, res, next) => {
       course,
       classCode,
       capacity,
-      departmentId,
+      departmentId: effectiveDepartmentId || undefined,
       subject,
       subjectIds,
       lectureOrder,
@@ -174,7 +176,7 @@ exports.createClass = async (req, res, next) => {
 
     await logAudit(req, "create", "class", newClass._id, {
       name,
-      departmentId,
+      departmentId: effectiveDepartmentId,
     });
 
     res.status(201).json({
