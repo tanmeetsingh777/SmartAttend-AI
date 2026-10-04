@@ -5,6 +5,7 @@ import { attendanceService } from '../services/attendanceService';
 import WebcamCapture from '../components/WebcamCapture';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ResponsiveSelect from '../components/ResponsiveSelect';
+import Modal from '../components/Modal';
 import { Camera, CheckCircle, AlertTriangle, Users, StopCircle, UserCheck, ShieldAlert, Sparkles, Check, RefreshCw } from 'lucide-react';
 
 const TakeAttendance = () => {
@@ -22,6 +23,8 @@ const TakeAttendance = () => {
   const [isProcessingFrame, setIsProcessingFrame] = useState(false);
   const [detectionLogs, setDetectionLogs] = useState([]);
   const [presentCount, setPresentCount] = useState(0);
+  const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
+  const [sessionError, setSessionError] = useState('');
 
   // AI Feedback Overlay State
   const [aiFeedback, setAiFeedback] = useState(null);
@@ -76,7 +79,7 @@ const TakeAttendance = () => {
         setAiFeedback(null);
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to start attendance session');
+      setSessionError(err.response?.data?.message || 'Failed to start attendance session');
     } finally {
       setLoading(false);
     }
@@ -170,14 +173,17 @@ const TakeAttendance = () => {
 
   const handleStopSession = async () => {
     if (!activeSession) return;
-    if (!window.confirm('Do you want to finalize and stop this attendance session? Unmarked students will be auto-marked absent.')) return;
+    setShowFinalizeConfirm(true);
+  };
 
+  const confirmStopSession = async () => {
+    setShowFinalizeConfirm(false);
     try {
       setLoading(true);
       await attendanceService.finalizeSession(activeSession._id, true);
       navigate(`/attendance-review?sessionId=${activeSession._id}`);
     } catch (err) {
-      alert('Failed to finalize session');
+      setSessionError('Failed to finalize session');
     } finally {
       setLoading(false);
     }
@@ -202,6 +208,47 @@ const TakeAttendance = () => {
 
   return (
     <div className="space-y-6 pb-12">
+
+      <Modal
+        isOpen={showFinalizeConfirm}
+        onClose={() => setShowFinalizeConfirm(false)}
+        title="Finalize Attendance Session"
+      >
+        <div className="space-y-5">
+          <div className="flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+            <div>
+              <p className="text-sm font-semibold text-white">Stop this live session?</p>
+              <p className="mt-1 text-xs leading-5 text-slate-300">
+                Unmarked students will be automatically recorded as absent. This action will move you to the attendance review.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setShowFinalizeConfirm(false)}
+              className="rounded-xl bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-700"
+            >
+              Keep Session Open
+            </button>
+            <button
+              type="button"
+              onClick={confirmStopSession}
+              className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-rose-500"
+            >
+              Finalize Session
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {sessionError && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs text-rose-200">
+          <span>{sessionError}</span>
+          <button type="button" onClick={() => setSessionError('')} className="font-bold text-rose-300 hover:text-white">Dismiss</button>
+        </div>
+      )}
 
       {/* Session Header */}
       <div className="glass-panel p-4 sm:p-6 rounded-3xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
