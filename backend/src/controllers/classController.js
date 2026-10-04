@@ -132,9 +132,11 @@ exports.createClass = async (req, res, next) => {
       lectureOrder,
       teacherIds,
       facultyAssignments,
+      lectures,
     } = req.body;
     const effectiveDepartmentId =
-      departmentId || (req.user.role === "hod" ? req.user.departmentIds?.[0] : undefined);
+      departmentId ||
+      (req.user.role === "hod" ? req.user.departmentIds?.[0] : undefined);
 
     // Default teacherIds to current user if teacher role
     let assignedTeachers = teacherIds || [];
@@ -158,6 +160,48 @@ exports.createClass = async (req, res, next) => {
       });
     }
 
+    let classSubjectIds = subjectIds;
+    let classLectureOrder = lectureOrder;
+    let classFacultyAssignments = facultyAssignments;
+    const lectureDefinitions = Array.isArray(lectures)
+      ? lectures.filter((lecture) => lecture?.code && lecture?.name)
+      : [];
+
+    if (lectureDefinitions.length > 0) {
+      if (!effectiveDepartmentId) {
+        return res.status(400).json({
+          success: false,
+          message: "A department is required when adding lectures",
+          code: "DEPARTMENT_REQUIRED",
+        });
+      }
+
+      const subjects = [];
+      const assignments = [];
+      for (const lecture of lectureDefinitions) {
+        const lectureSubject = await Subject.findOneAndUpdate(
+          { departmentId: effectiveDepartmentId, code: lecture.code.trim().toUpperCase() },
+          {
+            name: lecture.name.trim(),
+            code: lecture.code.trim().toUpperCase(),
+            departmentId: effectiveDepartmentId,
+            isActive: true,
+          },
+          { new: true, upsert: true, setDefaultsOnInsert: true },
+        );
+        subjects.push(lectureSubject._id);
+        if (lecture.teacherId) {
+          assignments.push({
+            teacherId: lecture.teacherId,
+            subjectId: lectureSubject._id,
+          });
+        }
+      }
+      classSubjectIds = subjects;
+      classLectureOrder = subjects;
+      classFacultyAssignments = assignments;
+    }
+
     const newClass = await Class.create({
       name,
       section,
@@ -167,11 +211,11 @@ exports.createClass = async (req, res, next) => {
       classCode,
       capacity,
       departmentId: effectiveDepartmentId || undefined,
-      subject,
-      subjectIds,
-      lectureOrder,
+      subject: subject || lectureDefinitions[0]?.name,
+      subjectIds: classSubjectIds,
+      lectureOrder: classLectureOrder,
       teacherIds: assignedTeachers,
-      facultyAssignments,
+      facultyAssignments: classFacultyAssignments,
     });
 
     await logAudit(req, "create", "class", newClass._id, {

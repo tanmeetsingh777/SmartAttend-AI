@@ -182,6 +182,15 @@ const TakeAttendance = () => {
     }
   };
 
+  const selectedClass = classes.find(c => c._id === selectedClassId);
+  const lectureItems = selectedClass?.lectureOrder?.length
+    ? selectedClass.lectureOrder
+    : selectedClass?.subjectIds?.length
+      ? selectedClass.subjectIds
+      : selectedClass?.subject
+        ? [{ _id: selectedClass.subject, code: selectedClass.subject, name: selectedClass.subject }]
+        : [];
+
   if (loading && !activeSession) {
     return (
       <div className="p-8 flex items-center justify-center min-h-[60vh]">
@@ -236,12 +245,11 @@ const TakeAttendance = () => {
               <ResponsiveSelect
                 value={subjectId || subject}
                 onChange={(value) => {
-                  const selectedClass = classes.find(c => c._id === selectedClassId);
-                  const selected = (selectedClass?.lectureOrder || selectedClass?.subjectIds || []).find(item => item._id === value);
+                  const selected = lectureItems.find(item => item._id === value);
                   setSubjectId(selected?._id || '');
                   setSubject(selected?.name || value);
                 }}
-                options={(classes.find(c => c._id === selectedClassId)?.lectureOrder || classes.find(c => c._id === selectedClassId)?.subjectIds || []).map(item => ({ value: item._id, label: `${item.code} - ${item.name}` }))}
+                options={lectureItems.map(item => ({ value: item._id, label: item.code === item.name ? item.name : `${item.code} - ${item.name}` }))}
               />
             </div>
 

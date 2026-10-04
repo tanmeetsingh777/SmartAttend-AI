@@ -15,7 +15,7 @@ const Classes = () => {
   // Modals
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editClassObj, setEditClassObj] = useState(null);
-  const [formData, setFormData] = useState({ name: '', section: '', academicYear: '2025-2026', subject: '', departmentId: '', teacherIds: [] });
+  const [formData, setFormData] = useState({ name: '', section: '', academicYear: '2025-2026', subject: '', departmentId: '', teacherIds: [], lectures: [{ code: '', name: '', teacherId: '' }] });
   const [modalError, setModalError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -52,7 +52,7 @@ const Classes = () => {
       const res = await classService.createClass(formData);
       if (res.success) {
         setAddModalOpen(false);
-        setFormData({ name: '', section: '', academicYear: '2025-2026', subject: '', departmentId: '', teacherIds: [] });
+        setFormData({ name: '', section: '', academicYear: '2025-2026', subject: '', departmentId: '', teacherIds: [], lectures: [{ code: '', name: '', teacherId: '' }] });
         fetchClasses();
       }
     } catch (err) {
@@ -98,6 +98,7 @@ const Classes = () => {
       subject: '',
       departmentId: user?.role === 'hod' ? (user.departmentIds?.[0] || '') : '',
       teacherIds: [],
+      lectures: [{ code: '', name: '', teacherId: '' }],
     });
     setModalError('');
     setAddModalOpen(true);
@@ -234,6 +235,54 @@ const Classes = () => {
               placeholder="e.g. Computer Networks (BCA-501)"
               className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
             />
+          </div>
+
+          <div className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+            <div className="flex items-center justify-between">
+              <label className="font-semibold text-slate-300">Lectures from timetable</label>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, lectures: [...formData.lectures, { code: '', name: '', teacherId: '' }] })}
+                className="text-blue-400 hover:text-blue-300 font-semibold"
+              >
+                + Add lecture
+              </button>
+            </div>
+            {formData.lectures.map((lecture, index) => (
+              <div key={`${index}-${lecture.code}`} className="grid grid-cols-1 gap-2 sm:grid-cols-[0.7fr_1.5fr_1.2fr_auto]">
+                <input
+                  required={index === 0 || lecture.name.length > 0}
+                  value={lecture.code}
+                  onChange={(e) => setFormData({ ...formData, lectures: formData.lectures.map((item, itemIndex) => itemIndex === index ? { ...item, code: e.target.value } : item) })}
+                  placeholder="Code e.g. BCA-501"
+                  className="min-w-0 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
+                />
+                <input
+                  required={index === 0 || lecture.code.length > 0}
+                  value={lecture.name}
+                  onChange={(e) => setFormData({ ...formData, lectures: formData.lectures.map((item, itemIndex) => itemIndex === index ? { ...item, name: e.target.value } : item) })}
+                  placeholder="Lecture name e.g. Introduction to DBMS"
+                  className="min-w-0 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
+                />
+                <select
+                  value={lecture.teacherId}
+                  onChange={(e) => setFormData({ ...formData, lectures: formData.lectures.map((item, itemIndex) => itemIndex === index ? { ...item, teacherId: e.target.value } : item) })}
+                  className="min-w-0 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
+                >
+                  <option value="">Faculty</option>
+                  {teachers.map((teacher) => <option key={teacher._id} value={teacher._id}>{teacher.fullName}</option>)}
+                </select>
+                <button
+                  type="button"
+                  disabled={formData.lectures.length === 1}
+                  onClick={() => setFormData({ ...formData, lectures: formData.lectures.filter((_, itemIndex) => itemIndex !== index) })}
+                  className="px-2 text-rose-400 disabled:text-slate-700"
+                  aria-label="Remove lecture"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
           </div>
 
           <div>
