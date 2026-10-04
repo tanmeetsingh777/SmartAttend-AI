@@ -67,7 +67,8 @@ const TakeAttendance = () => {
 
     try {
       setLoading(true);
-      const res = await attendanceService.startSession(selectedClassId, subject, subjectId);
+      const validSubjectId = /^[a-f\d]{24}$/i.test(subjectId) ? subjectId : undefined;
+      const res = await attendanceService.startSession(selectedClassId, subject, validSubjectId);
       if (res.success) {
         setActiveSession(res.data);
         setPresentCount(0);
@@ -246,7 +247,7 @@ const TakeAttendance = () => {
                 value={subjectId || subject}
                 onChange={(value) => {
                   const selected = lectureItems.find(item => item._id === value);
-                  setSubjectId(selected?._id || '');
+                  setSubjectId(/^[a-f\d]{24}$/i.test(selected?._id || '') ? selected._id : '');
                   setSubject(selected?.name || value);
                 }}
                 options={lectureItems.map(item => ({ value: item._id, label: item.code === item.name ? item.name : `${item.code} - ${item.name}` }))}
