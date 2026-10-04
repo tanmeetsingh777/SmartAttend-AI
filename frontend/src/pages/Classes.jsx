@@ -4,21 +4,31 @@ import Modal from '../components/Modal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { BookOpen, Plus, Edit, Trash2, Users, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const Classes = () => {
+  const { user } = useAuth();
   const [classes, setClasses] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Modals
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editClassObj, setEditClassObj] = useState(null);
-  const [formData, setFormData] = useState({ name: '', section: '', academicYear: '2025-2026', subject: '' });
+  const [formData, setFormData] = useState({ name: '', section: '', academicYear: '2025-2026', subject: '', departmentId: '', teacherIds: [] });
   const [modalError, setModalError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchClasses();
-  }, []);
+    if (user?.role === 'hod' || user?.role === 'admin') {
+      classService.getAssignableTeachers()
+        .then((res) => {
+          if (res.success) setTeachers(res.data);
+        })
+        .catch((err) => console.error(err));
+    }
+  }, [user]);
 
   const fetchClasses = async () => {
     try {
@@ -42,7 +52,7 @@ const Classes = () => {
       const res = await classService.createClass(formData);
       if (res.success) {
         setAddModalOpen(false);
-        setFormData({ name: '', section: '', academicYear: '2025-2026', subject: '' });
+        setFormData({ name: '', section: '', academicYear: '2025-2026', subject: '', departmentId: '', teacherIds: [] });
         fetchClasses();
       }
     } catch (err) {
@@ -81,7 +91,14 @@ const Classes = () => {
   };
 
   const openAddModal = () => {
-    setFormData({ name: '', section: '', academicYear: '2025-2026', subject: '' });
+    setFormData({
+      name: '',
+      section: '',
+      academicYear: '2025-2026',
+      subject: '',
+      departmentId: user?.role === 'hod' ? (user.departmentIds?.[0] || '') : '',
+      teacherIds: [],
+    });
     setModalError('');
     setAddModalOpen(true);
   };
@@ -230,6 +247,24 @@ const Classes = () => {
               className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
             />
           </div>
+
+          {(user?.role === 'hod' || user?.role === 'admin') && (
+            <div>
+              <label className="block font-semibold text-slate-300 mb-1">Assign Teacher</label>
+              <select
+                required={user?.role === 'hod'}
+                value={formData.teacherIds?.[0] || ''}
+                onChange={(e) => setFormData({ ...formData, teacherIds: e.target.value ? [e.target.value] : [] })}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value="">Select a teacher</option>
+                {teachers.map((teacher) => (
+                  <option key={teacher._id} value={teacher._id}>{teacher.fullName} ({teacher.email})</option>
+                ))}
+              </select>
+              {teachers.length === 0 && <p className="text-[11px] text-amber-300 mt-1">No active teachers are assigned to your department.</p>}
+            </div>
+          )}
 
           <div className="pt-4 flex justify-end gap-3">
             <button

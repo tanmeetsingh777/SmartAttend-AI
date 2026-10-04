@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   getClasses,
   getClassById,
+  getAssignableTeachers,
   createClass,
   updateClass,
   deleteClass,
@@ -11,6 +12,7 @@ const { protect, authorize } = require("../middleware/auth");
 
 router.use(protect);
 
+router.get("/teachers", authorize("admin", "hod"), getAssignableTeachers);
 router.route("/").get(getClasses).post(authorize("admin", "hod"), createClass);
 
 router

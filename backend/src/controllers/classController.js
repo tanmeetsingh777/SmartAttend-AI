@@ -7,6 +7,23 @@ const {
   logAudit,
 } = require("../middleware/resourceAccess");
 
+exports.getAssignableTeachers = async (req, res, next) => {
+  try {
+    const query = { role: "teacher", isActive: true };
+    if (req.user.role === "hod") {
+      query.departmentIds = { $in: req.user.departmentIds || [] };
+    }
+
+    const teachers = await User.find(query)
+      .select("fullName email departmentIds")
+      .sort({ fullName: 1 });
+
+    res.status(200).json({ success: true, data: teachers });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getClasses = async (req, res, next) => {
   try {
     const query = { isActive: true, ...getAccessibleClassQuery(req.user) };
@@ -32,12 +49,14 @@ exports.getClasses = async (req, res, next) => {
               String(assignment.subjectId?._id || assignment.subjectId),
             ),
         );
-        data.subjectIds = data.subjectIds.filter((subjectItem) =>
-          assignedSubjectIds.has(String(subjectItem._id)),
-        );
-        data.lectureOrder = data.lectureOrder.filter((subjectItem) =>
-          assignedSubjectIds.has(String(subjectItem._id)),
-        );
+        if (assignedSubjectIds.size > 0) {
+          data.subjectIds = data.subjectIds.filter((subjectItem) =>
+            assignedSubjectIds.has(String(subjectItem._id)),
+          );
+          data.lectureOrder = data.lectureOrder.filter((subjectItem) =>
+            assignedSubjectIds.has(String(subjectItem._id)),
+          );
+        }
         data.subject =
           data.lectureOrder[0]?.name ||
           data.subjectIds[0]?.name ||
