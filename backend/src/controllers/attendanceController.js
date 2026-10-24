@@ -58,29 +58,60 @@ exports.startSession = async (req, res, next) => {
           });
     }
 
-    // Deactivate any currently active session for this class by this teacher
+    // Start & end of today (to group by lecture day)
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const subjectFilter = subjectId
+      ? { $or: [{ subjectId }, { subject }] }
+      : { subject };
+
+    // Deactivate any currently active session for other lectures in this class by this teacher
     await AttendanceSession.updateMany(
       { classId, startedBy: req.user.id, status: "active" },
       { status: "completed", endedAt: new Date() },
     );
 
-    const session = await AttendanceSession.create({
+    // Look for an existing lecture session today for this exact class and subject
+    let session = await AttendanceSession.findOne({
       classId,
-      subjectId,
-      subject,
-      startedBy: req.user.id,
-      startedAt: new Date(),
-      status: "active",
+      ...subjectFilter,
+      startedAt: { $gte: startOfDay, $lte: endOfDay },
+    }).sort({ startedAt: -1 });
+
+    if (session) {
+      // Re-activate the existing session for this lecture
+      session.status = "active";
+      session.endedAt = undefined;
+      await session.save();
+    } else {
+      session = await AttendanceSession.create({
+        classId,
+        subjectId,
+        subject,
+        startedBy: req.user.id,
+        startedAt: new Date(),
+        status: "active",
+      });
+    }
+
+    const existingCount = await AttendanceRecord.countDocuments({
+      sessionId: session._id,
+      status: "present",
     });
+
     await logAudit(req, "start", "attendance_session", session._id, {
       classId,
       subject,
     });
 
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       message: "Attendance session started",
       data: session,
+      existingCount,
     });
   } catch (error) {
     next(error);
@@ -234,25 +265,24 @@ exports.recognizeAndMarkAttendance = async (req, res, next) => {
         });
     }
 
-    // Retrieve active students for this session's class WITH their embeddings (internal server retrieval only)
-    const studentsWithEmbeddings = await Student.find({
-      classId: session.classId,
+    // Retrieve active enrolled students with embeddings
+    const allEnrolledStudents = await Student.find({
       isActive: true,
       "faceEnrollment.status": "enrolled",
     }).select("+faceEnrollment.embedding");
 
-    if (studentsWithEmbeddings.length === 0) {
+    if (allEnrolledStudents.length === 0) {
       return res.status(200).json({
         success: true,
         status: "no_enrolled_students",
         message:
-          "No enrolled students in this class. Please enroll face data first.",
+          "No enrolled students found. Please enroll face data first.",
         matchedStudent: null,
       });
     }
 
     // Format candidate list for AI service
-    const candidates = studentsWithEmbeddings.map((s) => ({
+    const candidates = allEnrolledStudents.map((s) => ({
       studentId: s._id.toString(),
       embedding: s.faceEnrollment.embedding,
     }));
@@ -271,7 +301,10 @@ exports.recognizeAndMarkAttendance = async (req, res, next) => {
     }
 
     // Match identified!
-    const student = await Student.findById(aiResult.matchedStudentId);
+    const student = await Student.findById(aiResult.matchedStudentId).populate(
+      "classId",
+      "name section",
+    );
     if (!student || !student.isActive) {
       return res.status(200).json({
         success: true,
@@ -281,10 +314,58 @@ exports.recognizeAndMarkAttendance = async (req, res, next) => {
       });
     }
 
-    // Check if already marked present in this session
+    // STRICT SECTION CHECK: Only students of THIS specific section can take attendance in this session!
+    const studentClassId =
+      student.classId?._id?.toString() || student.classId?.toString();
+    const sessionClassId = session.classId?.toString();
+
+    if (studentClassId !== sessionClassId) {
+      const sessionClass = await Class.findById(session.classId);
+      const studentSecName = student.classId?.section
+        ? `Section ${student.classId.section}`
+        : "another section";
+      const sessionSecName = sessionClass?.section
+        ? `Section ${sessionClass.section}`
+        : "this section";
+
+      return res.status(200).json({
+        success: true,
+        status: "wrong_section",
+        confidence: aiResult.confidence,
+        message: `${student.fullName} (Roll: ${student.rollNumber}) belongs to ${studentSecName}. Only students of ${sessionSecName} can take attendance in this session.`,
+        matchedStudent: {
+          id: student._id,
+          rollNumber: student.rollNumber,
+          fullName: student.fullName,
+        },
+      });
+    }
+
+    // Check if already marked present in this lecture (this session or any session for this lecture today)
+    const startOfDay = new Date(session.startedAt || Date.now());
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(session.startedAt || Date.now());
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const lectureSessions = await AttendanceSession.find({
+      classId: session.classId,
+      $or: [
+        ...(session.subjectId ? [{ subjectId: session.subjectId }] : []),
+        { subject: session.subject },
+      ],
+      startedAt: { $gte: startOfDay, $lte: endOfDay },
+    }).select("_id");
+    const lectureSessionIds = lectureSessions.map((s) => s._id);
+
     const existingRecord = await AttendanceRecord.findOne({
-      sessionId: session._id,
-      studentId: student._id,
+      $or: [
+        { sessionId: session._id, studentId: student._id },
+        {
+          sessionId: { $in: lectureSessionIds },
+          studentId: student._id,
+          status: { $in: ["present", "late"] },
+        },
+      ],
     });
 
     if (existingRecord) {
@@ -292,7 +373,7 @@ exports.recognizeAndMarkAttendance = async (req, res, next) => {
         success: true,
         status: "already_marked",
         confidence: aiResult.confidence,
-        message: `${student.fullName} (Roll: ${student.rollNumber}) is already marked present.`,
+        message: `${student.fullName} (Roll: ${student.rollNumber}) is already marked present for this lecture.`,
         matchedStudent: {
           id: student._id,
           rollNumber: student.rollNumber,
@@ -380,6 +461,23 @@ exports.manualAttendance = async (req, res, next) => {
           message: "You are not authorized for this session",
           code: "SESSION_ACCESS_DENIED",
         });
+    }
+
+    const student = await Student.findById(studentId);
+    if (!student || !student.isActive) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found or inactive",
+        code: "STUDENT_NOT_FOUND",
+      });
+    }
+
+    if (student.classId.toString() !== session.classId.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: "Student belongs to another section. Only students of this section can be marked.",
+        code: "WRONG_SECTION",
+      });
     }
 
     const record = await AttendanceRecord.findOneAndUpdate(

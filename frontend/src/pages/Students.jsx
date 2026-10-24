@@ -6,17 +6,24 @@ import Modal from '../components/Modal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ResponsiveSelect from '../components/ResponsiveSelect';
 import { Users, Search, Plus, Camera, Edit, Trash2, CheckCircle2, XCircle, AlertCircle, Eye, RotateCcw } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 const Students = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlClassId = searchParams.get('classId') || '';
+
   const [students, setStudents] = useState([]);
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedClass, setSelectedClass] = useState('');
+  const [selectedClass, setSelectedClass] = useState(urlClassId);
   const [statusFilter, setStatusFilter] = useState('');
   const [fetchError, setFetchError] = useState('');
   const [showInactive, setShowInactive] = useState(false);
+
+  useEffect(() => {
+    setSelectedClass(urlClassId);
+  }, [urlClassId]);
 
   // Modals
   const [enrollStudent, setEnrollStudent] = useState(null);
@@ -67,6 +74,10 @@ const Students = () => {
 
   const handleCreateStudent = async (e) => {
     e.preventDefault();
+    if (!formData.classId) {
+      setModalError('Please choose which section to assign the student.');
+      return;
+    }
     setModalError('');
     setSubmitting(true);
     try {
@@ -86,6 +97,10 @@ const Students = () => {
   const handleUpdateStudent = async (e) => {
     e.preventDefault();
     if (!editStudent) return;
+    if (!formData.classId) {
+      setModalError('Please choose which section to assign the student.');
+      return;
+    }
     setModalError('');
     setSubmitting(true);
     try {
@@ -121,7 +136,7 @@ const Students = () => {
   };
 
   const openAddModal = () => {
-    setFormData({ rollNumber: '', fullName: '', email: '', classId: classes[0]?._id || '' });
+    setFormData({ rollNumber: '', fullName: '', email: '', classId: selectedClass || '' });
     setModalError('');
     setAddModalOpen(true);
   };
@@ -171,7 +186,20 @@ const Students = () => {
 
         {/* Dropdown Filters */}
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          <ResponsiveSelect value={selectedClass} onChange={setSelectedClass} className="w-full md:w-64" options={[{ value: '', label: 'All Classes' }, ...classes.map(c => ({ value: c._id, label: `${c.name} (${c.section}) - ${c.subject}` }))]} />
+          <ResponsiveSelect
+            value={selectedClass}
+            onChange={(val) => {
+              setSelectedClass(val);
+              setSearchParams(prev => {
+                const next = new URLSearchParams(prev);
+                if (val) next.set('classId', val);
+                else next.delete('classId');
+                return next;
+              });
+            }}
+            className="w-full md:w-64"
+            options={[{ value: '', label: 'All Classes' }, ...classes.map(c => ({ value: c._id, label: `${c.name} (${c.section}) - ${c.subject}` }))]}
+          />
 
           <ResponsiveSelect value={statusFilter} onChange={setStatusFilter} className="w-full md:w-44" options={[{ value: '', label: 'All Face Statuses' }, { value: 'enrolled', label: 'Enrolled' }, { value: 'not_enrolled', label: 'Not Enrolled' }]} />
 
@@ -335,8 +363,43 @@ const Students = () => {
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-300 mb-1">Assigned Class</label>
-            <ResponsiveSelect value={formData.classId} onChange={(value) => setFormData({ ...formData, classId: value })} options={classes.map(c => ({ value: c._id, label: `${c.name} (${c.section}) - ${c.subject}` }))} />
+            <label className="block font-semibold text-slate-300 mb-1.5">
+              Which section to assign the student? <span className="text-rose-400">*</span>
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {classes.map((cls) => {
+                const isSelected = formData.classId === cls._id;
+                return (
+                  <button
+                    key={cls._id}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, classId: cls._id })}
+                    className={`p-3 rounded-2xl border text-center transition flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                      isSelected
+                        ? 'bg-blue-600/25 border-blue-500 text-white shadow-lg shadow-blue-500/20 ring-2 ring-blue-500/50'
+                        : 'bg-slate-900/90 border-slate-700/80 text-slate-300 hover:border-slate-500 hover:bg-slate-800'
+                    }`}
+                  >
+                    <span className="font-bold text-sm tracking-wide text-white">
+                      Section {cls.section}
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      {cls.name}
+                    </span>
+                    {isSelected && (
+                      <span className="mt-0.5 px-2 py-0.5 rounded-full bg-blue-500 text-[9px] font-bold text-white">
+                        Selected
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {!formData.classId && (
+              <p className="text-[11px] text-amber-400 mt-1.5 flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" /> Please select a section for this student.
+              </p>
+            )}
           </div>
 
           <div className="pt-4 flex justify-end gap-3">
@@ -402,8 +465,38 @@ const Students = () => {
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-300 mb-1">Assigned Class</label>
-            <ResponsiveSelect value={formData.classId} onChange={(value) => setFormData({ ...formData, classId: value })} options={classes.map(c => ({ value: c._id, label: `${c.name} (${c.section}) - ${c.subject}` }))} />
+            <label className="block font-semibold text-slate-300 mb-1.5">
+              Assigned Section <span className="text-rose-400">*</span>
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {classes.map((cls) => {
+                const isSelected = formData.classId === cls._id;
+                return (
+                  <button
+                    key={cls._id}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, classId: cls._id })}
+                    className={`p-3 rounded-2xl border text-center transition flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                      isSelected
+                        ? 'bg-blue-600/25 border-blue-500 text-white shadow-lg shadow-blue-500/20 ring-2 ring-blue-500/50'
+                        : 'bg-slate-900/90 border-slate-700/80 text-slate-300 hover:border-slate-500 hover:bg-slate-800'
+                    }`}
+                  >
+                    <span className="font-bold text-sm tracking-wide text-white">
+                      Section {cls.section}
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      {cls.name}
+                    </span>
+                    {isSelected && (
+                      <span className="mt-0.5 px-2 py-0.5 rounded-full bg-blue-500 text-[9px] font-bold text-white">
+                        Selected
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="pt-4 flex justify-end gap-3">

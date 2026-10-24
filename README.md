@@ -168,11 +168,11 @@ All seeded demo accounts use the password `password123`.
 | ------- | ------------------------- | ----------------------------------------------------------- |
 | Admin   | `admin@university.edu`    | System-wide users, departments, audit, and reports          |
 | HOD     | `hod@university.edu`      | Assigned department classes, faculty, students, and reports |
-| Teacher | `vaishali@university.edu` | Assigned sections and lecture subjects                      |
-| Teacher | `shreya@university.edu`   | Assigned sections and lecture subjects                      |
-| Teacher | `rehan@university.edu`    | Assigned sections and lecture subjects                      |
-| Teacher | `priyanka@university.edu` | Assigned sections and lecture subjects                      |
-| Teacher | `arij@university.edu`     | Assigned sections and lecture subjects                      |
+| Teacher | `teacher1@university.edu` | Assigned sections and lecture subjects (Teacher 1)          |
+| Teacher | `teacher2@university.edu` | Assigned sections and lecture subjects (Teacher 2)          |
+| Teacher | `teacher3@university.edu` | Assigned sections and lecture subjects (Teacher 3)          |
+| Teacher | `teacher4@university.edu` | Assigned sections and lecture subjects (Teacher 4)          |
+| Teacher | `teacher5@university.edu` | Assigned sections and lecture subjects (Teacher 5)          |
 
 Teachers can start attendance only for a lecture assigned to them. The backend enforces this even if a URL or request body is modified.
 

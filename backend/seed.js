@@ -1,18 +1,19 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
+const connectDB = require("./src/config/db");
 const User = require("./src/models/User");
 const Class = require("./src/models/Class");
 const Student = require("./src/models/Student");
 const Subject = require("./src/models/Subject");
 const AttendanceSession = require("./src/models/AttendanceSession");
 const AttendanceRecord = require("./src/models/AttendanceRecord");
+const AttendanceCorrectionRequest = require("./src/models/AttendanceCorrectionRequest");
+const AuditLog = require("./src/models/AuditLog");
 const Department = require("./src/models/Department");
 
 const seedData = async () => {
   try {
-    await mongoose.connect(
-      process.env.MONGO_URI || "mongodb://localhost:27017/smartattend",
-    );
+    await connectDB();
     await Promise.all([
       User.deleteMany({}),
       Class.deleteMany({}),
@@ -20,6 +21,8 @@ const seedData = async () => {
       Subject.deleteMany({}),
       AttendanceSession.deleteMany({}),
       AttendanceRecord.deleteMany({}),
+      AttendanceCorrectionRequest.deleteMany({}),
+      AuditLog.deleteMany({}),
       Department.deleteMany({}),
     ]);
 
@@ -34,7 +37,7 @@ const seedData = async () => {
       role: "admin",
     });
     await User.create({
-      fullName: "Dr. Ramesh Sharma",
+      fullName: "Head of Department",
       email: "hod@university.edu",
       password: "password123",
       role: "hod",
@@ -42,32 +45,32 @@ const seedData = async () => {
     });
     const teachers = await User.create([
       {
-        fullName: "Ms. Vaishali",
-        email: "vaishali@university.edu",
+        fullName: "Teacher 1",
+        email: "teacher1@university.edu",
         password: "password123",
         role: "teacher",
       },
       {
-        fullName: "Ms. Shreya",
-        email: "shreya@university.edu",
+        fullName: "Teacher 2",
+        email: "teacher2@university.edu",
         password: "password123",
         role: "teacher",
       },
       {
-        fullName: "Mr. Rehan",
-        email: "rehan@university.edu",
+        fullName: "Teacher 3",
+        email: "teacher3@university.edu",
         password: "password123",
         role: "teacher",
       },
       {
-        fullName: "Ms. Priyanka Rai",
-        email: "priyanka@university.edu",
+        fullName: "Teacher 4",
+        email: "teacher4@university.edu",
         password: "password123",
         role: "teacher",
       },
       {
-        fullName: "Mr. Arij",
-        email: "arij@university.edu",
+        fullName: "Teacher 5",
+        email: "teacher5@university.edu",
         password: "password123",
         role: "teacher",
       },
@@ -121,85 +124,8 @@ const seedData = async () => {
       );
     }
 
-    const studentRows = [];
-    const names = [
-      "Rahul Sharma",
-      "Priya Singh",
-      "Aman Verma",
-      "Sneha Patel",
-      "Vikram Gupta",
-      "Simran Kaur",
-      "Rohan Mehta",
-      "Ananya Roy",
-      "Deepak Kumar",
-      "Meera Joshi",
-    ];
-    for (
-      let sectionIndex = 0;
-      sectionIndex < classes.length;
-      sectionIndex += 1
-    ) {
-      for (
-        let studentIndex = 0;
-        studentIndex < names.length;
-        studentIndex += 1
-      ) {
-        const section = classes[sectionIndex].section;
-        studentRows.push({
-          rollNumber: `BCA2026${section}${String(studentIndex + 1).padStart(2, "0")}`,
-          fullName: `${names[studentIndex]} (${section})`,
-          email: `${section.toLowerCase()}${studentIndex + 1}@student.edu`,
-          classId: classes[sectionIndex]._id,
-          enrollmentHistory: [{ classId: classes[sectionIndex]._id }],
-        });
-      }
-    }
-    const students = await Student.insertMany(studentRows);
-
-    const now = new Date();
-    for (let day = 3; day >= 1; day -= 1) {
-      for (
-        let sectionIndex = 0;
-        sectionIndex < classes.length;
-        sectionIndex += 1
-      ) {
-        const classObj = classes[sectionIndex];
-        const subjectIndex = (day + sectionIndex) % subjects.length;
-        const subject = subjects[subjectIndex];
-        const teacher = subjectData[subjectIndex][2];
-        const startedAt = new Date(now);
-        startedAt.setDate(now.getDate() - day);
-        startedAt.setHours(9 + subjectIndex, 10, 0, 0);
-        const session = await AttendanceSession.create({
-          classId: classObj._id,
-          subjectId: subject._id,
-          subject: subject.name,
-          startedBy: teacher._id,
-          startedAt,
-          endedAt: new Date(startedAt.getTime() + 50 * 60000),
-          status: "completed",
-        });
-        const sectionStudents = students.filter(
-          (student) => String(student.classId) === String(classObj._id),
-        );
-        await AttendanceRecord.insertMany(
-          sectionStudents.map((student, index) => ({
-            sessionId: session._id,
-            classId: classObj._id,
-            studentId: student._id,
-            status:
-              index % 5 === 2 ? "absent" : index % 7 === 0 ? "late" : "present",
-            source: "manual",
-            markedAt: startedAt,
-            markedBy: teacher._id,
-            notes: "Seeded lecture-wise record",
-          })),
-        );
-      }
-    }
-
     console.log(
-      `[Seed] Created admin, HOD, ${teachers.length} teachers, 4 sections, ${subjects.length} subjects and ${students.length} section-specific students.`,
+      `[Seed] Created admin, HOD, ${teachers.length} teachers, 4 sections, and ${subjects.length} subjects. (No dummy students or attendance records created).`,
     );
     console.log("[Seed] Password for demo accounts: password123");
     process.exit(0);

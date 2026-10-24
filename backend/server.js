@@ -10,15 +10,15 @@ const ensureDemoUsers = async () => {
 
   await User.create([
     {
-      fullName: "Dr. Ramesh Sharma (HOD)",
+      fullName: "System Administrator",
       email: "admin@university.edu",
       password: "password123",
       role: "admin",
       isActive: true,
     },
     {
-      fullName: "Prof. Anita Verma",
-      email: "teacher@university.edu",
+      fullName: "Teacher 1",
+      email: "teacher1@university.edu",
       password: "password123",
       role: "teacher",
       isActive: true,

@@ -1,18 +1,61 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Camera, RefreshCw, AlertTriangle, ShieldCheck } from 'lucide-react';
 
-const WebcamCapture = ({ onCapture, isProcessing = false, autoCaptureInterval = 0 }) => {
+const WebcamCapture = ({ onCapture, isProcessing = false, autoCaptureInterval = 0, stopOnCapture = false }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
+  const isMountedRef = useRef(true);
 
   const [streamActive, setStreamActive] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [permissionGranted, setPermissionGranted] = useState(false);
 
+  // Stop camera tracks cleanly
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      try {
+        streamRef.current.getTracks().forEach((track) => {
+          track.stop();
+        });
+      } catch (e) {
+        console.warn('[Camera Stop Error]:', e);
+      }
+      streamRef.current = null;
+    }
+    if (window.__smartattend_active_stream) {
+      try {
+        window.__smartattend_active_stream.getTracks().forEach((track) => {
+          track.stop();
+        });
+      } catch (e) {
+        console.warn('[Global Camera Stop Error]:', e);
+      }
+      window.__smartattend_active_stream = null;
+    }
+    if (videoRef.current && videoRef.current.srcObject) {
+      try {
+        const stream = videoRef.current.srcObject;
+        if (stream && stream.getTracks) {
+          stream.getTracks().forEach((track) => {
+            track.stop();
+          });
+        }
+      } catch (e) {
+        console.warn('[Video srcObject Stop Error]:', e);
+      }
+      videoRef.current.srcObject = null;
+    }
+    if (isMountedRef.current) {
+      setStreamActive(false);
+    }
+  }, []);
+
   // Initialize camera stream
   const startCamera = useCallback(async () => {
     setErrorMsg(null);
+    stopCamera();
+
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Camera access API is not supported in this browser environment');
@@ -27,14 +70,26 @@ const WebcamCapture = ({ onCapture, isProcessing = false, autoCaptureInterval = 
         audio: false
       });
 
+      // If component unmounted or modal closed while getUserMedia was resolving, stop immediately
+      if (!isMountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
       streamRef.current = stream;
+      window.__smartattend_active_stream = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        videoRef.current.play().catch((err) => {
+          if (err.name !== 'AbortError') {
+            console.warn('[Video Play Error]:', err);
+          }
+        });
       }
       setStreamActive(true);
       setPermissionGranted(true);
     } catch (err) {
+      if (!isMountedRef.current) return;
       console.error('[Webcam Error]:', err);
       setStreamActive(false);
       setPermissionGranted(false);
@@ -46,25 +101,14 @@ const WebcamCapture = ({ onCapture, isProcessing = false, autoCaptureInterval = 
         setErrorMsg(err.message || 'Unable to start camera video stream.');
       }
     }
-  }, []);
-
-  // Stop camera tracks (Requirement 32)
-  const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => {
-        track.stop();
-      });
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    setStreamActive(false);
-  }, []);
+  }, [stopCamera]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     startCamera();
+
     return () => {
+      isMountedRef.current = false;
       stopCamera();
     };
   }, [startCamera, stopCamera]);
@@ -82,11 +126,17 @@ const WebcamCapture = ({ onCapture, isProcessing = false, autoCaptureInterval = 
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
 
+    // Only stop camera hardware if explicitly requested (e.g. single photo enrollment snapshot).
+    // NEVER stop camera during continuous auto-capture live attendance!
+    if (stopOnCapture && (!autoCaptureInterval || autoCaptureInterval <= 0)) {
+      stopCamera();
+    }
+
     if (onCapture) {
       onCapture(dataUrl);
     }
     return dataUrl;
-  }, [streamActive, onCapture]);
+  }, [streamActive, onCapture, stopCamera, stopOnCapture, autoCaptureInterval]);
 
   // Handle continuous auto-capture interval if enabled (Requirement 17)
   useEffect(() => {

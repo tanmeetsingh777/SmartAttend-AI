@@ -74,7 +74,7 @@ const TakeAttendance = () => {
       const res = await attendanceService.startSession(selectedClassId, subject, validSubjectId);
       if (res.success) {
         setActiveSession(res.data);
-        setPresentCount(0);
+        setPresentCount(res.existingCount || 0);
         setDetectionLogs([]);
         setAiFeedback(null);
       }
@@ -137,7 +137,17 @@ const TakeAttendance = () => {
           confidence: Math.round((res.confidence || 1) * 100)
         });
       }
-      // 3. Unknown Face
+      // 3. Wrong Section Detected
+      else if (res.status === 'wrong_section') {
+        const student = res.matchedStudent;
+        setAiFeedback({
+          status: 'wrong_section',
+          title: 'Different Section - Access Denied',
+          subtitle: res.message || `${student?.fullName || 'Student'} belongs to another section.`,
+          confidence: Math.round((res.confidence || 0) * 100)
+        });
+      }
+      // 4. Unknown Face
       else if (res.status === 'unknown') {
         setAiFeedback({
           status: 'unknown',
