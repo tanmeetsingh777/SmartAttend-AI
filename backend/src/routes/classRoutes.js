@@ -14,7 +14,7 @@ const { protect, authorize } = require("../middleware/auth");
 router.use(protect);
 
 router.get("/departments", getAvailableDepartments);
-router.get("/teachers", authorize("admin", "hod"), getAssignableTeachers);
+router.get("/teachers", authorize("admin", "hod", "teacher"), getAssignableTeachers);
 router.route("/").get(getClasses).post(authorize("admin", "hod", "teacher"), createClass);
 
 router

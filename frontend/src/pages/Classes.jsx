@@ -10,6 +10,7 @@ const Classes = () => {
   const { user } = useAuth();
   const [classes, setClasses] = useState([]);
   const [teachers, setTeachers] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Modals
@@ -37,13 +38,20 @@ const Classes = () => {
 
   useEffect(() => {
     fetchClasses();
-    if (user?.role === 'hod' || user?.role === 'admin') {
-      classService.getAssignableTeachers()
-        .then((res) => {
-          if (res.success) setTeachers(res.data);
-        })
-        .catch((err) => console.error(err));
-    }
+
+    classService.getDepartments()
+      .then((res) => {
+        if (res.success && res.data) {
+          setDepartments(res.data);
+        }
+      })
+      .catch((err) => console.error(err));
+
+    classService.getAssignableTeachers()
+      .then((res) => {
+        if (res.success) setTeachers(res.data);
+      })
+      .catch((err) => console.error(err));
   }, [user]);
 
   const fetchClasses = async () => {
@@ -107,9 +115,12 @@ const Classes = () => {
   };
 
   const openAddModal = () => {
+    const defaultDept =
+      (user?.departmentIds && user.departmentIds[0]) ||
+      (departments.length > 0 ? departments[0]._id : '');
     setAddFormData({
       ...initialAddFormData,
-      departmentId: user?.role === 'hod' ? (user.departmentIds?.[0] || '') : '',
+      departmentId: defaultDept,
     });
     setAddModalError('');
     setAddModalOpen(true);
@@ -246,6 +257,23 @@ const Classes = () => {
               placeholder="e.g. A"
               className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
             />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-300 mb-1">Department</label>
+            <select
+              required
+              value={addFormData.departmentId}
+              onChange={(e) => setAddFormData({ ...addFormData, departmentId: e.target.value })}
+              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
+            >
+              <option value="">Select Department</option>
+              {departments.map((dept) => (
+                <option key={dept._id} value={dept._id}>
+                  {dept.name} ({dept.code})
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
