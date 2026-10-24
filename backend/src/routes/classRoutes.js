@@ -4,6 +4,7 @@ const {
   getClasses,
   getClassById,
   getAssignableTeachers,
+  getAvailableDepartments,
   createClass,
   updateClass,
   deleteClass,
@@ -12,6 +13,7 @@ const { protect, authorize } = require("../middleware/auth");
 
 router.use(protect);
 
+router.get("/departments", getAvailableDepartments);
 router.get("/teachers", authorize("admin", "hod"), getAssignableTeachers);
 router.route("/").get(getClasses).post(authorize("admin", "hod", "teacher"), createClass);
 

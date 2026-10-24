@@ -1,11 +1,28 @@
 const Class = require("../models/Class");
 const Student = require("../models/Student");
 const User = require("../models/User");
-require("../models/Subject");
+const Subject = require("../models/Subject");
+const Department = require("../models/Department");
 const {
   getAccessibleClassQuery,
   logAudit,
 } = require("../middleware/resourceAccess");
+
+exports.getAvailableDepartments = async (req, res, next) => {
+  try {
+    let departments = await Department.find({ isActive: true }).sort({ name: 1 });
+    if (departments.length === 0) {
+      const defaultDept = await Department.create({
+        name: "Computer Applications",
+        code: "CA",
+      });
+      departments = [defaultDept];
+    }
+    res.status(200).json({ success: true, data: departments });
+  } catch (error) {
+    next(error);
+  }
+};
 
 exports.getAssignableTeachers = async (req, res, next) => {
   try {
@@ -134,9 +151,19 @@ exports.createClass = async (req, res, next) => {
       facultyAssignments,
       lectures,
     } = req.body;
-    const effectiveDepartmentId =
+    let effectiveDepartmentId =
       departmentId ||
-      (req.user.role === "hod" ? req.user.departmentIds?.[0] : undefined);
+      (req.user.departmentIds && req.user.departmentIds[0]);
+
+    if (!effectiveDepartmentId) {
+      const fallbackDept =
+        (await Department.findOne({ isActive: true }).sort({ createdAt: 1 })) ||
+        (await Department.create({
+          name: "Computer Applications",
+          code: "CA",
+        }));
+      effectiveDepartmentId = fallbackDept._id;
+    }
 
     // Default teacherIds to current user if teacher role
     let assignedTeachers = teacherIds || [];
@@ -168,13 +195,6 @@ exports.createClass = async (req, res, next) => {
       : [];
 
     if (lectureDefinitions.length > 0) {
-      if (!effectiveDepartmentId) {
-        return res.status(400).json({
-          success: false,
-          message: "A department is required when adding lectures",
-          code: "DEPARTMENT_REQUIRED",
-        });
-      }
 
       const subjects = [];
       const assignments = [];

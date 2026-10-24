@@ -1,6 +1,11 @@
 import api from "./api";
 
 export const classService = {
+  async getDepartments() {
+    const res = await api.get("/classes/departments");
+    return res.data;
+  },
+
   async getAssignableTeachers() {
     const res = await api.get("/classes/teachers");
     return res.data;
