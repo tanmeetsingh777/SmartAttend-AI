@@ -15,8 +15,24 @@ const Classes = () => {
   // Modals
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editClassObj, setEditClassObj] = useState(null);
-  const [formData, setFormData] = useState({ name: '', section: '', academicYear: '2025-2026', subject: '', departmentId: '', teacherIds: [], lectures: [{ code: '', name: '', teacherId: '' }] });
-  const [modalError, setModalError] = useState('');
+  const initialAddFormData = {
+    name: '',
+    section: '',
+    academicYear: '2026-2027',
+    subject: '',
+    departmentId: '',
+    teacherIds: [],
+    lectures: [{ code: '', name: '', teacherId: '' }]
+  };
+  const [addFormData, setAddFormData] = useState(initialAddFormData);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    section: '',
+    academicYear: '2026-2027',
+    subject: ''
+  });
+  const [addModalError, setAddModalError] = useState('');
+  const [editModalError, setEditModalError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -46,17 +62,17 @@ const Classes = () => {
 
   const handleCreateClass = async (e) => {
     e.preventDefault();
-    setModalError('');
+    setAddModalError('');
     setSubmitting(true);
     try {
-      const res = await classService.createClass(formData);
+      const res = await classService.createClass(addFormData);
       if (res.success) {
         setAddModalOpen(false);
-        setFormData({ name: '', section: '', academicYear: '2025-2026', subject: '', departmentId: '', teacherIds: [], lectures: [{ code: '', name: '', teacherId: '' }] });
+        setAddFormData(initialAddFormData);
         fetchClasses();
       }
     } catch (err) {
-      setModalError(err.response?.data?.message || 'Failed to create class');
+      setAddModalError(err.response?.data?.message || 'Failed to create class');
     } finally {
       setSubmitting(false);
     }
@@ -65,16 +81,16 @@ const Classes = () => {
   const handleUpdateClass = async (e) => {
     e.preventDefault();
     if (!editClassObj) return;
-    setModalError('');
+    setEditModalError('');
     setSubmitting(true);
     try {
-      const res = await classService.updateClass(editClassObj._id, formData);
+      const res = await classService.updateClass(editClassObj._id, editFormData);
       if (res.success) {
         setEditClassObj(null);
         fetchClasses();
       }
     } catch (err) {
-      setModalError(err.response?.data?.message || 'Failed to update class');
+      setEditModalError(err.response?.data?.message || 'Failed to update class');
     } finally {
       setSubmitting(false);
     }
@@ -91,28 +107,23 @@ const Classes = () => {
   };
 
   const openAddModal = () => {
-    setFormData({
-      name: '',
-      section: '',
-      academicYear: '2025-2026',
-      subject: '',
+    setAddFormData({
+      ...initialAddFormData,
       departmentId: user?.role === 'hod' ? (user.departmentIds?.[0] || '') : '',
-      teacherIds: [],
-      lectures: [{ code: '', name: '', teacherId: '' }],
     });
-    setModalError('');
+    setAddModalError('');
     setAddModalOpen(true);
   };
 
   const openEditModal = (c) => {
     setEditClassObj(c);
-    setFormData({
-      name: c.name,
-      section: c.section,
-      academicYear: c.academicYear,
-      subject: c.subject
+    setEditFormData({
+      name: c.name || '',
+      section: c.section || '',
+      academicYear: c.academicYear || '2026-2027',
+      subject: c.subject || ''
     });
-    setModalError('');
+    setEditModalError('');
   };
 
   return (
@@ -152,14 +163,18 @@ const Classes = () => {
                   </span>
                   <div className="flex items-center gap-1">
                     <button
+                      type="button"
                       onClick={() => openEditModal(cls)}
                       className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+                      title="Edit Class"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleDeleteClass(cls._id, `${cls.name} (${cls.section})`)}
                       className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition"
+                      title="Deactivate Class"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -169,7 +184,15 @@ const Classes = () => {
                 <h3 className="text-lg font-bold text-white tracking-tight">{cls.name}</h3>
                 <p className="text-xs text-blue-400 font-semibold mt-0.5">{cls.subjectIds?.length || 1} lectures assigned</p>
                 <p className="text-[11px] text-slate-400 mt-2">Academic Year: {cls.academicYear} · {cls.course || 'BCA'}</p>
-                <div className="mt-3 flex flex-wrap gap-1.5">{(cls.subjectIds || [{ name: cls.subject }]).map(item => <span key={item._id || item.name} className="px-2 py-1 text-[10px] rounded-md bg-slate-900 text-slate-300 border border-slate-700">{item.code || item.name}</span>)}</div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {(cls.subjectIds && cls.subjectIds.length > 0 ? cls.subjectIds : [{ name: cls.subject }])
+                    .filter(Boolean)
+                    .map((item, idx) => (
+                      <span key={item._id || item.code || item.name || idx} className="px-2 py-1 text-[10px] rounded-md bg-slate-900 text-slate-300 border border-slate-700">
+                        {item.code || item.name || 'Subject'}
+                      </span>
+                    ))}
+                </div>
               </div>
 
               <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between">
@@ -194,10 +217,10 @@ const Classes = () => {
       {/* Add Class Modal */}
       <Modal isOpen={addModalOpen} onClose={() => setAddModalOpen(false)} title="Create New Class Section">
         <form onSubmit={handleCreateClass} className="space-y-4 text-xs">
-          {modalError && (
+          {addModalError && (
             <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-xl flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{modalError}</span>
+              <span>{addModalError}</span>
             </div>
           )}
 
@@ -206,8 +229,8 @@ const Classes = () => {
             <input
               type="text"
               required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              value={addFormData.name}
+              onChange={(e) => setAddFormData({ ...addFormData, name: e.target.value })}
               placeholder="e.g. BCA 3rd Year"
               className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
             />
@@ -218,8 +241,8 @@ const Classes = () => {
             <input
               type="text"
               required
-              value={formData.section}
-              onChange={(e) => setFormData({ ...formData, section: e.target.value })}
+              value={addFormData.section}
+              onChange={(e) => setAddFormData({ ...addFormData, section: e.target.value.toUpperCase() })}
               placeholder="e.g. A"
               className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
             />
@@ -230,8 +253,8 @@ const Classes = () => {
             <input
               type="text"
               required
-              value={formData.subject}
-              onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+              value={addFormData.subject}
+              onChange={(e) => setAddFormData({ ...addFormData, subject: e.target.value })}
               placeholder="e.g. Computer Networks (BCA-501)"
               className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
             />
@@ -242,31 +265,31 @@ const Classes = () => {
               <label className="font-semibold text-slate-300">Lectures from timetable</label>
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, lectures: [...formData.lectures, { code: '', name: '', teacherId: '' }] })}
+                onClick={() => setAddFormData({ ...addFormData, lectures: [...(addFormData.lectures || []), { code: '', name: '', teacherId: '' }] })}
                 className="text-blue-400 hover:text-blue-300 font-semibold"
               >
                 + Add lecture
               </button>
             </div>
-            {formData.lectures.map((lecture, index) => (
+            {(addFormData.lectures || []).map((lecture, index) => (
               <div key={`${index}-${lecture.code}`} className="grid grid-cols-1 gap-2 sm:grid-cols-[0.7fr_1.5fr_1.2fr_auto]">
                 <input
                   required={index === 0 || lecture.name.length > 0}
                   value={lecture.code}
-                  onChange={(e) => setFormData({ ...formData, lectures: formData.lectures.map((item, itemIndex) => itemIndex === index ? { ...item, code: e.target.value } : item) })}
+                  onChange={(e) => setAddFormData({ ...addFormData, lectures: addFormData.lectures.map((item, itemIndex) => itemIndex === index ? { ...item, code: e.target.value } : item) })}
                   placeholder="Code e.g. BCA-501"
                   className="min-w-0 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
                 />
                 <input
                   required={index === 0 || lecture.code.length > 0}
                   value={lecture.name}
-                  onChange={(e) => setFormData({ ...formData, lectures: formData.lectures.map((item, itemIndex) => itemIndex === index ? { ...item, name: e.target.value } : item) })}
+                  onChange={(e) => setAddFormData({ ...addFormData, lectures: addFormData.lectures.map((item, itemIndex) => itemIndex === index ? { ...item, name: e.target.value } : item) })}
                   placeholder="Lecture name e.g. Introduction to DBMS"
                   className="min-w-0 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
                 />
                 <select
                   value={lecture.teacherId}
-                  onChange={(e) => setFormData({ ...formData, lectures: formData.lectures.map((item, itemIndex) => itemIndex === index ? { ...item, teacherId: e.target.value } : item) })}
+                  onChange={(e) => setAddFormData({ ...addFormData, lectures: addFormData.lectures.map((item, itemIndex) => itemIndex === index ? { ...item, teacherId: e.target.value } : item) })}
                   className="min-w-0 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
                 >
                   <option value="">Faculty</option>
@@ -274,8 +297,8 @@ const Classes = () => {
                 </select>
                 <button
                   type="button"
-                  disabled={formData.lectures.length === 1}
-                  onClick={() => setFormData({ ...formData, lectures: formData.lectures.filter((_, itemIndex) => itemIndex !== index) })}
+                  disabled={(addFormData.lectures?.length || 0) <= 1}
+                  onClick={() => setAddFormData({ ...addFormData, lectures: addFormData.lectures.filter((_, itemIndex) => itemIndex !== index) })}
                   className="px-2 text-rose-400 disabled:text-slate-700"
                   aria-label="Remove lecture"
                 >
@@ -290,9 +313,9 @@ const Classes = () => {
             <input
               type="text"
               required
-              value={formData.academicYear}
-              onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
-              placeholder="e.g. 2025-2026"
+              value={addFormData.academicYear}
+              onChange={(e) => setAddFormData({ ...addFormData, academicYear: e.target.value })}
+              placeholder="e.g. 2026-2027"
               className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -302,8 +325,8 @@ const Classes = () => {
               <label className="block font-semibold text-slate-300 mb-1">Assign Teacher</label>
               <select
                 required={user?.role === 'hod'}
-                value={formData.teacherIds?.[0] || ''}
-                onChange={(e) => setFormData({ ...formData, teacherIds: e.target.value ? [e.target.value] : [] })}
+                value={addFormData.teacherIds?.[0] || ''}
+                onChange={(e) => setAddFormData({ ...addFormData, teacherIds: e.target.value ? [e.target.value] : [] })}
                 className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
               >
                 <option value="">Select a teacher</option>
@@ -337,10 +360,10 @@ const Classes = () => {
       {/* Edit Class Modal */}
       <Modal isOpen={!!editClassObj} onClose={() => setEditClassObj(null)} title="Update Class Details">
         <form onSubmit={handleUpdateClass} className="space-y-4 text-xs">
-          {modalError && (
+          {editModalError && (
             <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-xl flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{modalError}</span>
+              <span>{editModalError}</span>
             </div>
           )}
 
@@ -349,8 +372,8 @@ const Classes = () => {
             <input
               type="text"
               required
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              value={editFormData.name || ''}
+              onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
               className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -360,8 +383,8 @@ const Classes = () => {
             <input
               type="text"
               required
-              value={formData.section}
-              onChange={(e) => setFormData({ ...formData, section: e.target.value })}
+              value={editFormData.section || ''}
+              onChange={(e) => setEditFormData({ ...editFormData, section: e.target.value.toUpperCase() })}
               className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -371,8 +394,8 @@ const Classes = () => {
             <input
               type="text"
               required
-              value={formData.subject}
-              onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+              value={editFormData.subject || ''}
+              onChange={(e) => setEditFormData({ ...editFormData, subject: e.target.value })}
               className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -382,8 +405,8 @@ const Classes = () => {
             <input
               type="text"
               required
-              value={formData.academicYear}
-              onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
+              value={editFormData.academicYear || ''}
+              onChange={(e) => setEditFormData({ ...editFormData, academicYear: e.target.value })}
               className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -392,14 +415,14 @@ const Classes = () => {
             <button
               type="button"
               onClick={() => setEditClassObj(null)}
-              className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium"
+              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-500/25"
+              className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-500/25 transition disabled:opacity-50"
             >
               {submitting ? 'Updating...' : 'Save Changes'}
             </button>

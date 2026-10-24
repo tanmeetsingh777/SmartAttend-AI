@@ -278,14 +278,34 @@ exports.updateClass = async (req, res, next) => {
     }
 
     if (name) classObj.name = name;
-    if (section) classObj.section = section;
+    if (section) {
+      classObj.section = section;
+      if (classObj.classCode && classObj.classCode.includes("-")) {
+        const parts = classObj.classCode.split("-");
+        classObj.classCode = `${parts[0]}-${parts[1].slice(0, -1)}${section}`;
+      }
+    }
     if (academicYear) classObj.academicYear = academicYear;
     if (semester !== undefined) classObj.semester = semester;
     if (course !== undefined) classObj.course = course;
     if (classCode !== undefined) classObj.classCode = classCode;
     if (capacity !== undefined) classObj.capacity = capacity;
     if (departmentId !== undefined) classObj.departmentId = departmentId;
-    if (subject) classObj.subject = subject;
+    if (subject) {
+      classObj.subject = subject;
+      const Subject = require("../models/Subject");
+      if (req.user.role === "teacher") {
+        const assignment = (classObj.facultyAssignments || []).find(
+          (a) =>
+            String(a.teacherId?._id || a.teacherId) === String(req.user._id || req.user.id),
+        );
+        if (assignment?.subjectId) {
+          await Subject.findByIdAndUpdate(assignment.subjectId, { name: subject });
+        }
+      } else if (classObj.subjectIds && classObj.subjectIds.length > 0) {
+        await Subject.findByIdAndUpdate(classObj.subjectIds[0], { name: subject });
+      }
+    }
     if (subjectIds) classObj.subjectIds = subjectIds;
     if (lectureOrder) classObj.lectureOrder = lectureOrder;
     if (teacherIds) classObj.teacherIds = teacherIds;

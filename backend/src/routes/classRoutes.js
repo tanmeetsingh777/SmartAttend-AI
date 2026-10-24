@@ -13,12 +13,13 @@ const { protect, authorize } = require("../middleware/auth");
 router.use(protect);
 
 router.get("/teachers", authorize("admin", "hod"), getAssignableTeachers);
-router.route("/").get(getClasses).post(authorize("admin", "hod"), createClass);
+router.route("/").get(getClasses).post(authorize("admin", "hod", "teacher"), createClass);
 
 router
   .route("/:id")
   .get(getClassById)
-  .put(authorize("admin", "hod"), updateClass)
+  .put(authorize("admin", "hod", "teacher"), updateClass)
   .delete(authorize("admin", "hod"), deleteClass);
 
 module.exports = router;
+
