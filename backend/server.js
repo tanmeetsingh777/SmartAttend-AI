@@ -17,8 +17,8 @@ const ensureDemoUsers = async () => {
       isActive: true,
     },
     {
-      fullName: "Teacher 1",
-      email: "teacher1@university.edu",
+      fullName: "Prof. Anita Verma",
+      email: "teacher@university.edu",
       password: "password123",
       role: "teacher",
       isActive: true,

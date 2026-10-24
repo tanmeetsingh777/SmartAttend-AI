@@ -73,6 +73,21 @@ exports.updateUser = async (req, res, next) => {
   }
 };
 
+exports.deleteUser = async (req, res, next) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+    await logAudit(req, "delete", "user", user._id, { email: user.email });
+    res.json({ success: true, message: "User deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getDepartments = async (req, res, next) => {
   try {
     res.json({

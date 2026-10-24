@@ -168,7 +168,7 @@ All seeded demo accounts use the password `password123`.
 | ------- | ------------------------- | ----------------------------------------------------------- |
 | Admin   | `admin@university.edu`    | System-wide users, departments, audit, and reports          |
 | HOD     | `hod@university.edu`      | Assigned department classes, faculty, students, and reports |
-| Teacher | `teacher1@university.edu` | Assigned sections and lecture subjects (Teacher 1)          |
+| Teacher | `teacher@university.edu`  | Assigned sections and lecture subjects (Prof. Anita Verma)  |
 | Teacher | `teacher2@university.edu` | Assigned sections and lecture subjects (Teacher 2)          |
 | Teacher | `teacher3@university.edu` | Assigned sections and lecture subjects (Teacher 3)          |
 | Teacher | `teacher4@university.edu` | Assigned sections and lecture subjects (Teacher 4)          |

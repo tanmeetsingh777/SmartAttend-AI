@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Camera, Lock, Mail, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 
 const Login = () => {
-  const [email, setEmail] = useState('teacher1@university.edu');
+  const [email, setEmail] = useState('teacher@university.edu');
   const [password, setPassword] = useState('password123');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,7 +33,7 @@ const Login = () => {
 
   const fillQuickCredentials = (role) => {
     if (role === 'teacher') {
-      setEmail('teacher1@university.edu');
+      setEmail('teacher@university.edu');
       setPassword('password123');
     } else {
       setEmail('admin@university.edu');
@@ -79,7 +79,7 @@ const Login = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="teacher1@university.edu"
+                placeholder="teacher@university.edu"
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-900/80 border border-slate-700/60 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
               />
             </div>
