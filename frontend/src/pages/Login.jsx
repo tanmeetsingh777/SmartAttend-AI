@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Camera, Lock, Mail, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Lock, Mail, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('teacher@university.edu');
@@ -51,9 +51,6 @@ const Login = () => {
         
         {/* Header Branding */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white mx-auto mb-4 shadow-xl shadow-blue-500/25">
-            <Camera className="w-7 h-7" />
-          </div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight">SmartAttend <span className="text-blue-500">AI</span></h1>
           <p className="text-xs text-slate-400 mt-1 font-medium">Pretrained Facial Recognition University System</p>
         </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Camera } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Navbar = ({ onToggleSidebar }) => {
@@ -15,9 +15,6 @@ const Navbar = ({ onToggleSidebar }) => {
         </button>
 
         <Link to="/dashboard" className="flex items-center gap-2.5 group">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-600 text-white transition duration-200 group-hover:bg-blue-500">
-            <Camera className="w-5 h-5" />
-          </div>
           <div>
             <span className="text-sm sm:text-lg font-extrabold text-white tracking-tight whitespace-nowrap">SmartAttend <span className="text-blue-500">AI</span></span>
           </div>
