@@ -94,7 +94,7 @@ const seedData = async () => {
     );
 
     const classes = [];
-    for (const section of ["A", "B", "C", "D"]) {
+    for (const section of ["A", "B"]) {
       const offset = section.charCodeAt(0) - 65;
       const orderedSubjects = subjects.map(
         (_, index) => subjects[(index + offset) % subjects.length],
@@ -125,7 +125,7 @@ const seedData = async () => {
     }
 
     console.log(
-      `[Seed] Created admin, HOD, ${teachers.length} teachers, 4 sections, and ${subjects.length} subjects. (No dummy students or attendance records created).`,
+      `[Seed] Created admin, HOD, ${teachers.length} teachers, 2 sections (A & B), and ${subjects.length} subjects. (No dummy students or attendance records created).`,
     );
     console.log("[Seed] Password for demo accounts: password123");
     process.exit(0);

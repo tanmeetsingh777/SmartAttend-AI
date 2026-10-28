@@ -16,6 +16,7 @@ const TakeAttendance = () => {
   const [selectedClassId, setSelectedClassId] = useState(searchParams.get('classId') || '');
   const [subject, setSubject] = useState('');
   const [subjectId, setSubjectId] = useState('');
+  const [selectedSection, setSelectedSection] = useState('');
   const [loading, setLoading] = useState(true);
 
   // Active Session State
@@ -40,6 +41,7 @@ const TakeAttendance = () => {
         const firstSubject = cls.lectureOrder?.[0] || cls.subjectIds?.[0];
         setSubjectId(firstSubject?._id || '');
         setSubject(firstSubject?.name || cls.subject);
+        setSelectedSection(cls.section || '');
       }
     }
   }, [selectedClassId, classes]);
@@ -55,6 +57,7 @@ const TakeAttendance = () => {
           const firstSubject = res.data[0].lectureOrder?.[0] || res.data[0].subjectIds?.[0];
           setSubjectId(firstSubject?._id || '');
           setSubject(firstSubject?.name || res.data[0].subject);
+          setSelectedSection(res.data[0].section || '');
         }
       }
     } catch (err) {
@@ -208,6 +211,29 @@ const TakeAttendance = () => {
         ? [{ _id: selectedClass.subject, code: selectedClass.subject, name: selectedClass.subject }]
         : [];
 
+  // Derive unique class groups (same name, different sections)
+  const classGroups = classes.reduce((acc, cls) => {
+    const key = cls.name;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(cls);
+    return acc;
+  }, {});
+
+  // Sections available for the selected subject (same class name as selectedClass)
+  const siblingClasses = selectedClass
+    ? (classGroups[selectedClass.name] || []).sort((a, b) => a.section.localeCompare(b.section))
+    : [];
+
+  const sectionOptions = siblingClasses.map(cls => ({
+    value: cls._id,
+    label: `Section ${cls.section}`
+  }));
+
+  // When section changes inside subject panel, update the selected class
+  const handleSectionChange = (classId) => {
+    setSelectedClassId(classId);
+  };
+
   if (loading && !activeSession) {
     return (
       <div className="p-8 flex items-center justify-center min-h-[60vh]">
@@ -293,22 +319,63 @@ const TakeAttendance = () => {
           <p className="text-xs text-slate-400 mb-6">Select the academic class section and subject to start live camera scanning.</p>
 
           <form onSubmit={handleStartSession} className="space-y-4 text-xs">
+            {/* Class Section Dropdown */}
             <div>
               <label className="block font-semibold text-slate-300 mb-1.5">Select Class Section</label>
-              <ResponsiveSelect value={selectedClassId} onChange={setSelectedClassId} options={classes.map(c => ({ value: c._id, label: `${c.name} (${c.section}) - ${c.subject}` }))} />
+              <ResponsiveSelect
+                value={selectedClassId}
+                onChange={setSelectedClassId}
+                options={classes.map(c => ({
+                  value: c._id,
+                  label: `${c.name} — Section ${c.section}`
+                }))}
+              />
             </div>
 
+            {/* Subject + Section Picker */}
             <div>
               <label className="block font-semibold text-slate-300 mb-1.5">Lecture / Subject</label>
-              <ResponsiveSelect
-                value={subjectId || subject}
-                onChange={(value) => {
-                  const selected = lectureItems.find(item => item._id === value);
-                  setSubjectId(/^[a-f\d]{24}$/i.test(selected?._id || '') ? selected._id : '');
-                  setSubject(selected?.name || value);
-                }}
-                options={lectureItems.map(item => ({ value: item._id, label: item.code === item.name ? item.name : `${item.code} - ${item.name}` }))}
-              />
+              <div className="rounded-2xl border border-slate-700/60 bg-slate-900 p-3 space-y-3">
+                {/* Subject dropdown */}
+                <ResponsiveSelect
+                  value={subjectId || subject}
+                  onChange={(value) => {
+                    const selected = lectureItems.find(item => item._id === value);
+                    setSubjectId(/^[a-f\d]{24}$/i.test(selected?._id || '') ? selected._id : '');
+                    setSubject(selected?.name || value);
+                  }}
+                  options={lectureItems.map(item => ({
+                    value: item._id,
+                    label: item.code && item.code !== item.name
+                      ? `${item.code} — ${item.name}`
+                      : item.name
+                  }))}
+                  placeholder="Select a subject"
+                />
+
+                {/* Section sub-selector */}
+                {sectionOptions.length > 1 && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="shrink-0 text-slate-400 font-medium">Section:</span>
+                    <div className="flex gap-2 flex-wrap">
+                      {sectionOptions.map(opt => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => handleSectionChange(opt.value)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
+                            selectedClassId === opt.value
+                              ? 'bg-blue-600 border-blue-500 text-white shadow-sm shadow-blue-500/30'
+                              : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <button
@@ -382,7 +449,7 @@ const TakeAttendance = () => {
             <div className="glass-panel p-6 rounded-3xl border border-slate-800 text-center">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Present Count (Live)</p>
               <h2 className="text-4xl font-extrabold text-emerald-400 mt-1">{presentCount}</h2>
-              <p className="text-[11px] text-slate-400 mt-1">Unique students recognized & logged</p>
+              <p className="text-[11px] text-slate-400 mt-1">Unique students recognized &amp; logged</p>
             </div>
 
             {/* Live Recognized Stream Feed */}
